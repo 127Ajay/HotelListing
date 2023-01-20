@@ -1,9 +1,11 @@
 ﻿using AutoMapper;
 using HotelListing.API.Contracts;
+using HotelListing.API.Controllers;
 using HotelListing.API.Data;
 using HotelListing.API.Models.Users;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Tokens;
+using NuGet.Common;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -13,6 +15,7 @@ namespace HotelListing.API.Repository
     public class AuthManager : IAuthManager
     {
         private readonly IMapper _mapper;
+        private readonly ILogger<AuthManager> _logger;
         private readonly UserManager<ApiUser> _userManager;
         private readonly IConfiguration _configuration;
         private ApiUser _user;
@@ -20,11 +23,12 @@ namespace HotelListing.API.Repository
         private static string _loginProvider = "HotelListingAPI";
         private static string _refreshToken = "RefreshToken";
 
-        public AuthManager(IMapper mapper, UserManager<ApiUser> userManager, IConfiguration configuration)
+        public AuthManager(IMapper mapper, UserManager<ApiUser> userManager, IConfiguration configuration, ILogger<AuthManager> logger)
         {
             _mapper = mapper;
             _userManager = userManager;
             _configuration = configuration;
+            _logger = logger;
         }
 
         public async Task<AuthResponseDTO> Login(LoginDTO loginDTO)
@@ -34,11 +38,12 @@ namespace HotelListing.API.Repository
             
             if(_user == null || !validPassowrd)
             {
+                _logger.LogWarning($"Incorrect Email or Password");
                 return null;
             }
             
             var token = await GenerateToken();
-
+            _logger.LogInformation($"Token Generated successfully with Email {loginDTO.Email} and Tokene :{token}");
             return new AuthResponseDTO { Token = token, UserID = _user.Id, RefreshToken = await CreateRefreshToken() };
         }
 
@@ -52,6 +57,7 @@ namespace HotelListing.API.Repository
 
             if(result.Succeeded)
             {
+                _logger.LogInformation($"Adding Roles to User: {_user.Email}");
                 await _userManager.AddToRoleAsync(_user, "User");
             }
 
