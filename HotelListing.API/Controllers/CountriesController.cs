@@ -5,12 +5,12 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using HotelListing.API.Data;
-using HotelListing.API.Models.Country;
 using AutoMapper;
-using HotelListing.API.Contracts;
 using Microsoft.AspNetCore.Authorization;
-using HotelListing.API.Exceptions;
+using HotelListing.API.Core.Contracts;
+using HotelListing.API.Core.Models.Country;
+using HotelListing.API.Core.Models;
+using HotelListing.API.Core.Exceptions;
 
 namespace HotelListing.API.Controllers
 {
@@ -38,6 +38,15 @@ namespace HotelListing.API.Controllers
             var records = _mapper.Map<List<GetCountryDTO>>(countries);
             return Ok(records);
         }
+
+        // GET: api/Countries/?StartIndex=0&pagesize=25&PageNumber=1
+        [HttpGet("GetAll")]
+        public async Task<ActionResult<PagedResult<GetCountryDTO>>> GetPagedCountries([FromQuery] QueryParameters queryParameters)
+        {
+            var pagedCountriesResult = await _countryRepository.GetAllAsync<GetCountryDTO>(queryParameters);
+            return Ok(pagedCountriesResult);
+        }
+
 
         // GET: api/Countries/5
         [HttpGet("{id}")]
@@ -95,10 +104,9 @@ namespace HotelListing.API.Controllers
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
         [Authorize]
-        public async Task<ActionResult<Country>> PostCountry(CreateCountryDTO createCountry)
+        public async Task<ActionResult<CountryDTO>> PostCountry(CreateCountryDTO createCountry)
         {
-            var country = _mapper.Map<Country>(createCountry);
-            await _countryRepository.AddAsync(country);
+            var country = await _countryRepository.AddAsync<CreateCountryDTO, GetCountryDTO>(createCountry);
 
             return CreatedAtAction("GetCountry", new { id = country.Id }, country);
         }
