@@ -12,6 +12,7 @@ using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using System.Text;
 using Microsoft.OpenApi.Models;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -123,6 +124,9 @@ builder.Services.AddVersionedApiExplorer(
         options.SubstituteApiVersionInUrl = true;
     });
 
+
+//builder.Services.AddHealthChecks();
+
 builder.Services.AddControllers().AddOData(options =>
 {
     options.Select().Filter().OrderBy();
@@ -136,6 +140,9 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+//app.MapHealthChecks("/healthCheck");
+
 app.UseMiddleware<ExceptionMiddleware>();
 app.UseHttpsRedirection();
 
