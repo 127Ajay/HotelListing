@@ -1,5 +1,5 @@
-﻿using HotelListing.API.Contracts;
-using HotelListing.API.Models.Users;
+﻿using HotelListing.API.Core.Contracts;
+using HotelListing.API.Core.Models.Users;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Linq;
@@ -11,10 +11,12 @@ namespace HotelListing.API.Controllers
     public class UserController : ControllerBase
     {
         private readonly IAuthManager _authManager;
+        private readonly ILogger<UserController> _logger;
 
-        public UserController(IAuthManager authManager)
+        public UserController(IAuthManager authManager, ILogger<UserController> logger)
         {
             _authManager = authManager;
+            _logger = logger;
         }
 
         // POST: api/User/register
@@ -25,19 +27,29 @@ namespace HotelListing.API.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult> Register([FromBody] APIUserDTO userDTO)
         {
-            var errors = await _authManager.Register(userDTO);
+            _logger.LogInformation($"Registration attempt for {userDTO.Email}");
 
-            if (errors.Any())
+            try
             {
-                foreach(var error in errors)
-                {
-                    ModelState.AddModelError(error.Code, error.Description);
-                }
+                var errors = await _authManager.Register(userDTO);
 
-                return BadRequest(ModelState);
+                if (errors.Any())
+                {
+                    foreach(var error in errors)
+                    {
+                        ModelState.AddModelError(error.Code, error.Description);
+                    }
+
+                    return BadRequest(ModelState);
+                }
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Somethin Went wrong in {nameof(Register)} - User attempt for {userDTO.Email}");
+                return Problem($"Somethin Went wrong in {nameof(Register)}. Please contant support.", statusCode: 500);
             }
 
-            return Ok();
         }
 
         // POST: api/User/login
@@ -48,14 +60,24 @@ namespace HotelListing.API.Controllers
         [ProducesResponseType(StatusCodes.Status200OK)]
         public async Task<ActionResult> Login([FromBody] LoginDTO loginDTO)
         {
-            var authResponse = await _authManager.Login(loginDTO);
-
-            if (authResponse == null)
+            _logger.LogInformation($"Login attempt for {loginDTO.Email}");
+            try
             {
-                return Unauthorized();
+                var authResponse = await _authManager.Login(loginDTO);
+
+                if (authResponse == null)
+                {
+                    return Unauthorized();
+                }
+
+                return Ok(authResponse);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Somethin Went wrong in {nameof(Login)} - User attempt for {loginDTO.Email}");
+                return Problem($"Somethin Went wrong in {nameof(Login)}. Please contant support.", statusCode: 500);
             }
 
-            return Ok(authResponse);
         }
 
         // POST: api/Account/refreshtoken

@@ -1,15 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using HotelListing.API.Data;
-using HotelListing.API.Contracts;
+using HotelListing.API.Core.Contracts;
 using AutoMapper;
-using HotelListing.API.Repository;
-using HotelListing.API.Models.Hotel;
+using HotelListing.API.Core.Models.Hotel;
 using Microsoft.AspNetCore.Authorization;
 
 namespace HotelListing.API.Controllers
@@ -19,12 +12,14 @@ namespace HotelListing.API.Controllers
     public class HotelsController : ControllerBase
     {
         private readonly IHotelRepository _hotelRepository;
+        private readonly ILogger<HotelsController> _logger;
         private readonly IMapper _mapper;
 
-        public HotelsController(IHotelRepository hotelRepository, IMapper mapper)
+        public HotelsController(IHotelRepository hotelRepository, IMapper mapper, ILogger<HotelsController> logger)
         {
             _hotelRepository = hotelRepository;
             _mapper = mapper;
+            _logger = logger;
         }
 
         // GET: api/Hotels
@@ -43,6 +38,7 @@ namespace HotelListing.API.Controllers
             var hotel = await _hotelRepository.GetAsync(id);
             if (hotel == null)
             {
+                _logger.LogWarning($"No record found for {nameof(GetHotel)} with id: {id}");
                 return NotFound();
             }
             var record = _mapper.Map<GetHotelDTO>(hotel);
@@ -94,8 +90,7 @@ namespace HotelListing.API.Controllers
         [Authorize]
         public async Task<ActionResult<CreateHotelDTO>> PostHotel(CreateHotelDTO hotelDto)
         {
-            var hotel = _mapper.Map<Hotel>(hotelDto);
-            await _hotelRepository.AddAsync(hotel);
+            var hotel = await _hotelRepository.AddAsync<CreateHotelDTO, GetHotelDTO>(hotelDto);
 
             return CreatedAtAction("GetHotel", new { id = hotel.Id }, hotel);
         }
